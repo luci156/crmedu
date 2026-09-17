@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global Resets ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+  @apply bg-gray-50 text-gray-800 antialiased;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-gray-100; }
+::-webkit-scrollbar-thumb { @apply bg-primary-400 rounded-full; }
+
+/* ── Card ──────────────────────────────────────────────── */
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6;
+}
+
+/* ── Badge ─────────────────────────────────────────────── */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+/* ── Table ─────────────────────────────────────────────── */
+.table-wrapper {
+  @apply overflow-x-auto rounded-xl border border-gray-100;
+}
+
+table { @apply w-full text-sm; }
+thead { @apply bg-primary-50 text-primary-800; }
+th { @apply px-4 py-3 text-left font-semibold whitespace-nowrap; }
+td { @apply px-4 py-3 border-t border-gray-100 whitespace-nowrap; }
+tbody tr { @apply hover:bg-orange-50 transition-colors; }
+
+/* ── Input ─────────────────────────────────────────────── */
+.input {
+  @apply block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+         focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400
+         placeholder-gray-400 transition;
+}
+
+/* ── Button ────────────────────────────────────────────── */
+.btn-primary {
+  @apply inline-flex items-center gap-2 rounded-lg bg-primary-500 hover:bg-primary-600
+         text-white font-medium px-4 py-2 text-sm shadow-sm transition-colors;
+}
+.btn-ghost {
+  @apply inline-flex items-center gap-2 rounded-lg border border-gray-300
+         hover:border-primary-400 text-gray-600 hover:text-primary-600
+         font-medium px-4 py-2 text-sm transition-colors;
+}
