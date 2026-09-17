@@ -146,16 +146,55 @@ export interface ListParams {
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
 /** Fetch a list. Returns [] if no client configured – does NOT throw. */
+const resolvedDoctypeMap = new Map<string, string>()
+
+async function resolveDoctype(doctype: string): Promise<string> {
+  if (resolvedDoctypeMap.has(doctype)) return resolvedDoctypeMap.get(doctype)!
+  
+  const aliases = [doctype]
+  if (doctype === 'Course') aliases.push('Courses', 'LMS Course')
+  if (doctype === 'Student') aliases.push('Students')
+  if (doctype === 'Department') aliases.push('Departments')
+  if (doctype === 'Program') aliases.push('Programs')
+  if (doctype === 'Academic Term') aliases.push('Academic Terms', 'Terms', 'Term')
+  if (doctype === 'Course Offering') aliases.push('Course Offerings', 'Offerings', 'Offering')
+  if (doctype === 'Student Course Enrollment') aliases.push('Student Course Enrollments', 'Enrollments', 'Enrollment', 'Course Enrollment')
+  if (doctype === 'Class Session') aliases.push('Class Sessions', 'Class Sesion', 'Class Sesions', 'Sessions', 'Session')
+  if (doctype === 'Student Attendance') aliases.push('Student Attendances', 'Attendances', 'Attendance')
+  
+  const client = getClient()
+  if (!client) return doctype
+  
+  let lastError: unknown
+  for (const dt of aliases) {
+    try {
+      // Just fetch 1 record to test existence
+      await client.get(`/api/resource/${encodeURIComponent(dt)}`, { params: { limit_page_length: 1 } })
+      resolvedDoctypeMap.set(doctype, dt)
+      return dt
+    } catch (err) {
+      lastError = err
+      if (isAxiosError(err) && err.response?.status === 404) continue
+      // If 403 Forbidden or other errors, the doctype exists but we might not have access, we still map it
+      resolvedDoctypeMap.set(doctype, dt)
+      return dt
+    }
+  }
+  return doctype // fallback to original if all fail
+}
+
 export async function getList<T = Record<string, unknown>>(
   doctype: string,
   params?: ListParams,
 ): Promise<T[]> {
   const client = getClient()
   if (!client) return []
-  const { signal, fields, filters, order_by, limit = 500, limit_start = 0 } = params ?? {}
+  const { signal, filters, order_by, limit = 500, limit_start = 0 } = params ?? {}
+
+  const actualDoctype = await resolveDoctype(doctype)
   try {
     const response = await client.get<{ data: T[] }>(
-      `/api/resource/${encodeURIComponent(doctype)}`,
+      `/api/resource/${encodeURIComponent(actualDoctype)}`,
       {
         signal,
         params: {
@@ -168,7 +207,7 @@ export async function getList<T = Record<string, unknown>>(
       }
     )
     return response.data?.data ?? []
-  } catch (err) {
+  } catch (err: unknown) {
     if (axios.isCancel(err)) return []
     if (isAxiosError(err) && err.code === 'ERR_CANCELED') return []
     if (isAxiosError(err) && err.name === 'AbortError') return []
@@ -184,9 +223,10 @@ export async function getDoc<T = Record<string, unknown>>(
 ): Promise<T | null> {
   const client = getClient()
   if (!client) return null
+  const actualDoctype = await resolveDoctype(doctype)
   try {
     const response = await client.get<{ data: T }>(
-      `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
+      `/api/resource/${encodeURIComponent(actualDoctype)}/${encodeURIComponent(name)}`,
       { signal }
     )
     return response.data?.data ?? null
@@ -198,36 +238,32 @@ export async function getDoc<T = Record<string, unknown>>(
   }
 }
 
-/** Create a doc. Throws Vietnamese error on failure. */
-export async function createDoc<T = Record<string, unknown>>(
-  doctype: string,
-  data: Partial<T>,
-): Promise<T> {
+/** Create new doc. Throws on error. */
+export async function createDoc<T = Record<string, unknown>>(doctype: string, doc: Partial<T>): Promise<T> {
   const client = getClient()
-  if (!client) throw new Error('Chưa cấu hình kết nối Frappe.')
+  if (!client) throw new Error('Chưa kết nối Frappe.')
+  const actualDoctype = await resolveDoctype(doctype)
   try {
-    const response = await client.post<{ data: T }>(
-      `/api/resource/${encodeURIComponent(doctype)}`,
-      data
-    )
+    const response = await client.post<{ data: T }>(`/api/resource/${encodeURIComponent(actualDoctype)}`, doc)
     return response.data.data
   } catch (err) {
     throw new Error(formatApiError(err))
   }
 }
 
-/** Update a doc. Throws Vietnamese error on failure. */
+/** Update existing doc. Throws on error. */
 export async function updateDoc<T = Record<string, unknown>>(
   doctype: string,
   name: string,
-  data: Partial<T>,
+  doc: Partial<T>,
 ): Promise<T> {
   const client = getClient()
-  if (!client) throw new Error('Chưa cấu hình kết nối Frappe.')
+  if (!client) throw new Error('Chưa kết nối Frappe.')
+  const actualDoctype = await resolveDoctype(doctype)
   try {
     const response = await client.put<{ data: T }>(
-      `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
-      data
+      `/api/resource/${encodeURIComponent(actualDoctype)}/${encodeURIComponent(name)}`,
+      doc,
     )
     return response.data.data
   } catch (err) {
@@ -235,14 +271,13 @@ export async function updateDoc<T = Record<string, unknown>>(
   }
 }
 
-/** Delete a doc. Throws Vietnamese error on failure. */
+/** Delete a doc. Throws on error. */
 export async function deleteDoc(doctype: string, name: string): Promise<void> {
   const client = getClient()
-  if (!client) throw new Error('Chưa cấu hình kết nối Frappe.')
+  if (!client) throw new Error('Chưa kết nối Frappe.')
+  const actualDoctype = await resolveDoctype(doctype)
   try {
-    await client.delete(
-      `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`
-    )
+    await client.delete(`/api/resource/${encodeURIComponent(actualDoctype)}/${encodeURIComponent(name)}`)
   } catch (err) {
     throw new Error(formatApiError(err))
   }
