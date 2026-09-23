@@ -105,7 +105,12 @@ export function deleteProfile(id: string): void {
 let currentClient: AxiosInstance | null = null
 
 export function initClientFromProfile(profile: ConnectionProfile): void {
-  const baseURL = profile.baseURL.replace(/\/$/, '')
+  let baseURL = profile.baseURL.replace(/\/$/, '')
+  
+  // [Bypass CORS]: Tự động dùng Vite Proxy nếu đang dev và URL là localhost:8000
+  if (import.meta.env.DEV && baseURL === 'http://localhost:8000') {
+    baseURL = '' // Để trống -> sử dụng relative URL -> được Vite proxy hứng
+  }
   currentClient = axios.create({
     baseURL,
     timeout: 30_000,
@@ -287,7 +292,11 @@ export async function deleteDoc(doctype: string, name: string): Promise<void> {
 export async function testConnectionProfile(
   profile: ConnectionProfile,
 ): Promise<{ ok: boolean; version?: string; user?: string; responseTime: number; error?: string }> {
-  const baseURL = profile.baseURL.replace(/\/$/, '')
+  let baseURL = profile.baseURL.replace(/\/$/, '')
+  // [Bypass CORS]: Tự động dùng Vite Proxy nếu đang dev và URL là localhost:8000
+  if (import.meta.env.DEV && baseURL === 'http://localhost:8000') {
+    baseURL = ''
+  }
   const testClient = axios.create({
     baseURL,
     timeout: 10_000,
